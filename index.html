@@ -118,6 +118,24 @@
   .btn.main{background:var(--text);color:var(--bg);border:none}
   .btn svg{width:24px;height:24px}
 
+  /* ---------- Einkauf ---------- */
+  .shop{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
+  .shop .it{display:flex;gap:10px;align-items:baseline;font-size:20px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .shop .it>span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .shop .qty{font-family:"Fraunces",Georgia,serif;color:var(--accent);min-width:28px;text-align:right}
+  .shop .u{color:var(--muted);font-size:15px}
+  .online{grid-column:1/-1;margin-top:10px;font-size:16px;color:var(--warn)}
+  .setup{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;place-items:center;z-index:9}
+  .setup.on{display:grid}
+  .setup .box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:28px;width:min(620px,90vw)}
+  .setup h2{font-size:22px;font-weight:600;margin-bottom:8px}
+  .setup p{color:var(--muted);font-size:16px;margin-bottom:16px;line-height:1.4}
+  .setup input{width:100%;font-size:17px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font-family:ui-monospace,monospace}
+  .setup .row{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+  .setup button{font:inherit;font-size:17px;padding:10px 18px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .setup button.prim{background:var(--text);color:var(--bg);border:none}
+  #setupMsg{margin-top:12px;font-size:15px;color:var(--muted)}
+
   /* ---------- Fuß ---------- */
   .foot{display:flex;justify-content:space-between;font-size:13px;color:var(--faint)}
   .badge{color:var(--accent)}
@@ -132,7 +150,7 @@
     .head{grid-column:1/-1}
     .weather-card{grid-column:1}
     .deps-card{grid-column:2;grid-row:2/4}
-    .music-card{grid-column:1}
+    .shop-card{grid-column:1}
     .foot{grid-column:1/-1}
     .clock{font-size:104px}
   }
@@ -156,29 +174,26 @@
     <div id="deps"><div class="empty">Lade Abfahrten …</div></div>
   </section>
 
-  <section class="card music-card">
-    <div class="label">Musik <span class="hint">Vorschau · Steuerung folgt mit Home Assistant</span></div>
-    <div class="music">
-      <div class="cover"><svg viewBox="0 0 24 24" fill="none" stroke="#f1ebe1" stroke-width="1.4"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg></div>
-      <div>
-        <div class="track">Wohnzimmer · WiiM</div>
-        <div class="artist">Gerade nichts verbunden</div>
-        <div class="rooms"><span class="room on">Wohnzimmer</span><span class="room">Küche</span><span class="room">Bad</span></div>
-      </div>
-      <div class="ctrl">
-        <button class="btn" aria-label="Zurück"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-        <button class="btn main" aria-label="Wiedergabe"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
-      </div>
-    </div>
+  <section class="card shop-card">
+    <div class="label"><span id="shopTitle">Einkauf</span> <span class="hint" id="shopSrc"></span></div>
+    <div id="shop"><div class="empty">Lade Einkaufsliste …</div></div>
   </section>
 
   <footer class="foot">
     <span id="status">–</span>
-    <span>Flur-Cockpit</span>
+    <span id="brand">Flur-Cockpit</span>
   </footer>
 </div>
 <div class="night"></div>
+<div class="setup" id="setup"><div class="box">
+  <h2>Einkaufsliste verbinden</h2>
+  <p>Fine-grained Token mit Zugriff nur auf <b>training-log-data</b>, Berechtigung <b>Contents: Read-only</b>. Er wird nur auf diesem Gerät gespeichert.</p>
+  <input id="tokIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+  <div id="setupMsg"></div>
+  <div class="row"><button id="tokDel">Entfernen</button><button id="tokNo">Abbrechen</button><button class="prim" id="tokOk">Speichern</button></div>
+</div></div>
 
+<script src="https://cdn.jsdelivr.net/gh/r1bozyme/training-log@main/vorrat-core.js"></script>
 <script>
 /* =========================================================
    EINSTELLUNGEN – hier anpassen
@@ -192,8 +207,14 @@ const CONFIG = {
   perStop: 3,                                // Abfahrten pro Haltestelle
   nightFrom: 22, nightTo: 6,                 // Display abdunkeln
   refreshDeps: 60,                           // Sekunden
-  refreshWx: 900
+  refreshWx: 900,
+  refreshShop: 600,
+  data: { owner: "r1bozyme", repo: "training-log-data", file: "backup.json" }
 };
+// Kurznamen für die Wand (Rest: Name aus dem Datenbestand oder Produkt-ID)
+const NAMES = { skyr:"Skyr", bquark:"Berchtesgadener Quark", quark:"Magerquark", mbasis:"Müsli-Basis", banane:"Bananen",
+  heidel:"Heidelbeeren TK", sultan:"Sultaninen", walnuss:"Walnüsse", mandel:"Mandeln", roggen:"Roggenbrot",
+  hafermi:"Hafermilch", whey:"Whey", norsan:"Norsan Omega-3", glycin:"Glycin", creatin:"Creatin" };
 
 /* ---------- Hilfen ---------- */
 const $ = id => document.getElementById(id);
@@ -349,8 +370,72 @@ function setStatus(live){
   $("status").textContent = (live ? "Aktualisiert " : (PREVIEW ? "Offline-Vorschau · " : "Keine Verbindung · ")) + pad(d.getHours())+":"+pad(d.getMinutes());
 }
 
+/* ---------- Einkauf (Vorrats-Modul aus dem Training-Log) ---------- */
+const TOK_KEY = "fc-gh";
+function tok(){ try{ return localStorage.getItem(TOK_KEY) || ""; }catch(e){ return ""; } }
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+function wdTxt(iso){ const d = new Date(iso+"T12:00:00"); return WD[d.getDay()]+" "+d.getDate()+"."+(d.getMonth()+1)+"."; }
+const PL = { Becher:"Becher", Beutel:"Beutel", "Stück":"Stück", Packung:"Packungen", Brot:"Brote", Liter:"Liter", Dose:"Dosen", Flasche:"Flaschen" };
+async function loadShop(){
+  const box = $("shop");
+  if(PREVIEW){
+    $("shopTitle").textContent = "Einkauf · Sa"; $("shopSrc").innerHTML = '<span class="badge">Vorschau-Daten</span>';
+    box.innerHTML = '<div class="shop">'+[[2,"Becher","Skyr"],[1,"Beutel","Heidelbeeren TK"],[6,"Stück","Bananen"],[1,"Brot","Roggenbrot"]]
+      .map(x=>`<div class="it"><span class="qty">${x[0]}</span><span>${x[2]} <span class="u">${x[1]}</span></span></div>`).join("")+'</div>';
+    return;
+  }
+  if(!tok()){ box.innerHTML = '<div class="empty">Noch nicht verbunden – unten rechts 3× auf „Flur-Cockpit“ tippen.</div>'; $("shopSrc").textContent=""; return; }
+  try{
+    if(!window.tlVorratCore) throw new Error("Rechenkern nicht geladen");
+    const C = window.tlVorratCore, D = CONFIG.data;
+    const r = await fetch(`https://api.github.com/repos/${D.owner}/${D.repo}/contents/${D.file}`,
+      { headers:{ Authorization:"Bearer "+tok(), Accept:"application/vnd.github.raw+json" }, cache:"no-store" });
+    if(r.status===401) throw new Error("Token ungültig oder abgelaufen");
+    if(r.status===404) throw new Error("Repo nicht freigegeben für diesen Token");
+    if(!r.ok) throw new Error("GitHub "+r.status);
+    const bk = await r.json(), k = bk.keys || {};
+    const pj = (key, fb) => { try{ const v = JSON.parse(k[key]); return v==null?fb:v; }catch(e){ return fb; } };
+    const today = C.iso(new Date());
+    const fg = pj("tl-fg", {});
+    const st = pj("tl-v", {}); st.items = st.items||{}; st.extra = st.extra||[];
+    const e = C.einkauf(C.rechne(st, pj("tl-f", {}), fg.basis||[], today, Date.now()), today);
+    const own = {}; (Array.isArray(pj("tl-fp", [])) ? pj("tl-fp", []) : []).forEach(p=>{ if(p && p.id) own[p.id] = p.n; });
+    const nm = x => NAMES[x.pid] || x.n || own[x.pid] || x.pid;
+    $("shopTitle").textContent = "Einkauf · " + (e.samstag===today ? "heute" : wdTxt(e.samstag));
+    let h = "";
+    if(!e.aldi.length) h += '<div class="empty">Nichts nötig – alles reicht bis zum Samstag danach.</div>';
+    else h += '<div class="shop">'+e.aldi.map(x=>`<div class="it"><span class="qty">${x.kaufen}</span><span>${nm(x)} <span class="u">${x.kaufen===1?x.lbl:(PL[x.lbl]||x.lbl)}</span></span></div>`).join("")+'</div>';
+    if(e.online.length) h += `<div class="online">Online bestellen: ${e.online.map(x=>nm(x)+" (leer ~"+wdTxt(x.leer)+")").join(" · ")}</div>`;
+    box.innerHTML = h;
+    const age = bk.ts ? new Date(bk.ts) : null;
+    $("shopSrc").textContent = age ? "Stand "+pad(age.getDate())+"."+pad(age.getMonth()+1)+". "+pad(age.getHours())+":"+pad(age.getMinutes()) : "";
+  }catch(err){
+    box.innerHTML = `<div class="empty">Einkaufsliste nicht erreichbar: ${err.message}</div>`; $("shopSrc").textContent="";
+  }
+}
+// Einrichten: 3× schnell auf „Flur-Cockpit“ tippen
+let taps = 0, tapT = 0;
+$("brand").addEventListener("click", ()=>{ const n=Date.now(); taps = n-tapT<700 ? taps+1 : 1; tapT=n; if(taps>=3){ taps=0; openSetup(); } });
+function openSetup(){ $("tokIn").value=""; $("setupMsg").textContent = tok() ? "Ein Token ist gespeichert." : "Noch kein Token gespeichert."; $("setup").classList.add("on"); }
+function closeSetup(){ $("setup").classList.remove("on"); }
+$("tokNo").onclick = closeSetup;
+$("tokDel").onclick = ()=>{ try{ localStorage.removeItem(TOK_KEY); }catch(e){} closeSetup(); loadShop(); };
+$("tokOk").onclick = async ()=>{
+  const v = $("tokIn").value.trim(); if(!v) return;
+  $("setupMsg").textContent = "Prüfe …";
+  const D = CONFIG.data;
+  try{
+    const r = await fetch(`https://api.github.com/repos/${D.owner}/${D.repo}`, { headers:{ Authorization:"Bearer "+v } });
+    if(!r.ok) { $("setupMsg").textContent = "Abgelehnt (HTTP "+r.status+") – Token oder Repo-Freigabe prüfen."; return; }
+    const j = await r.json();
+    if(j.permissions && j.permissions.push) $("setupMsg").textContent = "Hinweis: Dieser Token darf auch schreiben. Für die Wand besser einen nur-lesenden nehmen.";
+    localStorage.setItem(TOK_KEY, v);
+    setTimeout(()=>{ closeSetup(); loadShop(); }, j.permissions && j.permissions.push ? 3500 : 300);
+  }catch(e){ $("setupMsg").textContent = "Keine Verbindung zu GitHub."; }
+};
+
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "3";
+const VERSION = "4";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
@@ -361,6 +446,7 @@ setInterval(checkUpdate, 5*60*1000);
 tick(); setInterval(tick, 1000);
 loadWeather(); setInterval(loadWeather, CONFIG.refreshWx*1000);
 loadDeps(); setInterval(loadDeps, CONFIG.refreshDeps*1000);
+loadShop(); setInterval(loadShop, CONFIG.refreshShop*1000);
 // Seite einmal pro Nacht neu laden (gegen Speicherlecks im Dauerbetrieb)
 setTimeout(()=>location.reload(), (()=>{const n=new Date(),r=new Date(n);r.setHours(4,0,0,0);if(r<=n)r.setDate(r.getDate()+1);return r-n;})());
 </script>
