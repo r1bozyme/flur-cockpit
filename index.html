@@ -119,11 +119,14 @@
   .btn svg{width:24px;height:24px}
 
   /* ---------- Markt ---------- */
-  .mkt{display:grid;grid-template-columns:auto auto 1fr;gap:22px;align-items:center;padding:16px 26px}
+  .mkt{display:grid;grid-template-columns:1fr 1px 1fr;gap:24px;align-items:center;padding:16px 26px}
+  .mkt .sep{align-self:stretch;background:var(--line)}
+  .tick{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:end}
+  .tick .rwrap{grid-column:1/-1}
   .mkt .nm{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
   .mkt .nm small{display:block;letter-spacing:.02em;text-transform:none;font-weight:500;font-size:13px;margin-top:3px}
-  .mkt .px{font-family:"Fraunces",Georgia,serif;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
-  .mkt .ch{font-size:18px;margin-top:4px;font-variant-numeric:tabular-nums}
+  .mkt .px{font-family:"Fraunces",Georgia,serif;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+  .mkt .ch{font-size:16px;margin-top:4px;font-variant-numeric:tabular-nums}
   .up{color:var(--ok)} .dn{color:var(--warn)}
   .rng{position:relative;height:6px;border-radius:3px;background:var(--line)}
   .rng i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--text);transform:translateX(-2px)}
@@ -178,9 +181,17 @@
   </header>
 
   <section class="card mkt mkt-card" id="mkt">
-    <div class="nm">S&amp;P 500<small id="mktState">–</small></div>
-    <div><div class="px" id="mktPx">–</div><div class="ch" id="mktCh"></div></div>
-    <div><div class="rng" id="mktRng"></div><div class="rngl"><span id="mktLo"></span><span>Tagesspanne</span><span id="mktHi"></span></div></div>
+    <div class="tick">
+      <div class="nm">S&amp;P 500<small id="spxState">–</small></div>
+      <div><div class="px" id="spxPx">–</div><div class="ch" id="spxCh"></div></div>
+      <div class="rwrap"><div class="rng" id="spxRng"></div><div class="rngl"><span id="spxLo"></span><span>Tag</span><span id="spxHi"></span></div></div>
+    </div>
+    <div class="sep"></div>
+    <div class="tick">
+      <div class="nm">NIO<small id="nioState">–</small></div>
+      <div><div class="px" id="nioPx">–</div><div class="ch" id="nioCh"></div></div>
+      <div class="rwrap"><div class="rng" id="nioRng"></div><div class="rngl"><span id="nioLo"></span><span>Tag</span><span id="nioHi"></span></div></div>
+    </div>
   </section>
 
   <section class="card weather-card">
@@ -208,7 +219,7 @@
   <h2>Dienste verbinden</h2>
   <p>Fine-grained Token mit Zugriff nur auf <b>training-log-data</b>, Berechtigung <b>Contents: Read-only</b>. Er wird nur auf diesem Gerät gespeichert.</p>
   <input id="tokIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
-  <p style="margin:18px 0 8px">Kurs-Key von <b>financialmodelingprep.com</b> (Gratis-Plan) für die S&amp;P-500-Kachel:</p>
+  <p style="margin:18px 0 8px">Kurs-Key von <b>financialmodelingprep.com</b> (Gratis-Plan) für S&amp;P 500 und NIO:</p>
   <input id="fmpIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="FMP API-Key">
   <div id="setupMsg"></div>
   <div class="row"><button id="tokDel">Entfernen</button><button id="tokNo">Abbrechen</button><button class="prim" id="tokOk">Speichern</button></div>
@@ -473,37 +484,46 @@ function usOpen(){
 async function fmpQuote(sym){
   const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(fmpKey())}`, {cache:"no-store"});
   if(r.status===401) throw new Error("Key ungültig");
+  if(r.status===429) throw new Error("Tageslimit erreicht");
   const j = await r.json().catch(()=>null);
   if(!r.ok || !Array.isArray(j) || !j.length) { const e = new Error("nicht im Plan"); e.plan = true; throw e; }
   return j[0];
 }
 async function loadMkt(){
-  if(PREVIEW){ renderMkt({price:6812.4, change:28.6, changePercentage:0.42, dayLow:6771.2, dayHigh:6830.9, previousClose:6783.8}, false, true); return; }
-  if(!fmpKey()){ $("mktState").textContent = "Key fehlt – 3× auf „Flur-Cockpit“"; return; }
+  if(PREVIEW){
+    renderTick("spx", {price:6812.4, change:28.6, changePercentage:0.42, dayLow:6771.2, dayHigh:6830.9, previousClose:6783.8}, {d:1, demo:true});
+    renderTick("nio", {price:6.42, change:-0.18, changePercentage:-2.72, dayLow:6.31, dayHigh:6.66, previousClose:6.60}, {d:2, usd:true, demo:true});
+    return;
+  }
+  if(!fmpKey()){ ["spx","nio"].forEach(k=>$(k+"State").textContent = "Key fehlt"); return; }
+  // S&P 500 (Index, sonst SPY-ETF)
   try{
     let q;
     if(!spyMode){ try{ q = await fmpQuote("^GSPC"); }catch(e){ if(e.plan) spyMode = true; else throw e; } }
     if(spyMode) q = await fmpQuote("SPY");
-    renderMkt(q, spyMode, false);
-  }catch(e){ $("mktState").textContent = "Kurs nicht erreichbar: " + e.message; }
+    renderTick("spx", q, {d: spyMode?2:1, note: spyMode?"über SPY · ":""});
+  }catch(e){ $("spxState").textContent = e.message; }
+  // NIO (NYSE)
+  try{ renderTick("nio", await fmpQuote("NIO"), {d:2, usd:true}); }
+  catch(e){ $("nioState").textContent = e.message; }
 }
-function renderMkt(q, spy, demo){
-  const pct = q.changePercentage ?? q.changesPercentage ?? 0;
-  $("mktPx").textContent = nf(q.price, spy?2:1);
-  $("mktCh").innerHTML = `<span class="${pct>=0?"up":"dn"}">${pct>=0?"+":""}${nf(q.change, spy?2:1)} · ${pct>=0?"+":""}${nf(pct,2)} %</span>`;
-  $("mktState").textContent = demo ? "Vorschau-Daten" : (spy ? "über SPY-ETF · " : "") + (usOpen() ? "Börse offen" : "Schlusskurs");
+function renderTick(k, q, o){
+  const pct = q.changePercentage ?? q.changesPercentage ?? 0, d = o.d, cur = o.usd ? " $" : "";
+  $(k+"Px").textContent = nf(q.price, d) + cur;
+  $(k+"Ch").innerHTML = `<span class="${pct>=0?"up":"dn"}">${pct>=0?"+":""}${nf(q.change, d)} · ${pct>=0?"+":""}${nf(pct,2)} %</span>`;
+  $(k+"State").textContent = o.demo ? "Vorschau-Daten" : (o.note||"") + (usOpen() ? "Börse offen" : "Schlusskurs");
   const lo = q.dayLow, hi = q.dayHigh;
   if(lo && hi && hi>lo){
     const pos = v => Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100));
-    $("mktRng").innerHTML = (q.previousClose ? `<b style="left:${pos(q.previousClose)}%" title="Vortag"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
-    $("mktLo").textContent = nf(lo, spy?2:0); $("mktHi").textContent = nf(hi, spy?2:0);
+    $(k+"Rng").innerHTML = (q.previousClose ? `<b style="left:${pos(q.previousClose)}%"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
+    $(k+"Lo").textContent = nf(lo, d===1?0:2); $(k+"Hi").textContent = nf(hi, d===1?0:2);
   }
 }
-// Abruf alle 5 Min. während der US-Börsenzeit, sonst stündlich (Gratis-Plan: 250/Tag)
-function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?5:60)*60*1000); }
+// 2 Abrufe je Runde: alle 10 Min. während der US-Börsenzeit, sonst stündlich → ca. 110/Tag je Gerät (Gratis-Plan: 250/Tag)
+function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "5";
+const VERSION = "6";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
