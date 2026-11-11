@@ -140,7 +140,7 @@
   .cal .ev:last-child,.duo .shop .it:last-child{border-bottom:none}
   .cal .when{font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
   .cal .when b{display:block;color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
-  .cal .ttl{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal .ttl{font-size:18px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .cal .ev.now .ttl{color:var(--accent)}
 
   /* ---------- Einkauf ---------- */
@@ -176,7 +176,7 @@
     .mkt-card{grid-column:1/-1;grid-row:2}
     .weather-card{grid-column:1;grid-row:3}
     .deps-card{grid-column:2;grid-row:3/5}
-    .duo{grid-column:1;grid-row:4;align-self:start}
+    .duo{grid-column:1;grid-row:4;align-self:stretch}
     .foot{grid-column:1/-1;grid-row:5}
     .clock{font-size:104px}
   }
@@ -520,13 +520,14 @@ function renderCal(list){
   $("cal").innerHTML = rows.map(e=>{
     const st = new Date(e.s), running = e.s <= now;
     const time = e.a ? "ganztägig" : running ? "läuft" : pad(st.getHours())+":"+pad(st.getMinutes());
-    return `<div class="ev${running?" now":""}"><div class="when"><b>${dayLbl(e.s)}</b>${time}</div><div class="ttl">${esc(e.t)}</div></div>`;
+    const ttl = String(e.t||"").replace(/^\s*\d{1,2}[:.]\d{2}\s*(Uhr)?\s*[-–]?\s*/,"");   // „20:00 Doan …“ → „Doan …“
+    return `<div class="ev${running?" now":""}"><div class="when"><b>${dayLbl(e.s)}</b>${time}</div><div class="ttl">${esc(ttl)}</div></div>`;
   }).join("");
 }
 async function loadCal(){
   if(PREVIEW){
     const t = new Date(); t.setMinutes(0,0,0); const h = x => t.getTime()+x*3600e3;
-    renderCal([{t:"Abendessen mit Freunden", s:h(4), e:h(6)}, {t:"Besuch kommt an, Hbf", s:h(24), e:h(25)}, {t:"Geburtstagsfeier", s:h(52), e:h(56)}, {t:"Wochenmarkt", s:h(70), e:h(71)}]);
+    renderCal([{t:"20:00 Abendessen mit Freunden im Restaurant", s:h(4), e:h(6)}, {t:"Besuch kommt an, Hbf", s:h(24), e:h(25)}, {t:"Geburtstagsfeier bei Freunden – Geschenk mitbringen", s:h(52), e:h(56)}, {t:"Wochenmarkt", s:h(70), e:h(71)}]);
     $("calSrc").innerHTML = '<span class="badge">Vorschau-Daten</span>'; return;
   }
   if(!calUrl()){ $("cal").innerHTML = '<div class="empty">Noch nicht verbunden – 3× auf „Flur-Cockpit“.</div>'; return; }
@@ -578,7 +579,8 @@ async function loadMkt(){
 function renderTick(k, q, o){
   const pct = q.changePercentage ?? q.changesPercentage ?? 0, d = o.d, cur = o.usd ? " $" : "";
   $(k+"Px").textContent = nf(q.price, d) + cur;
-  $(k+"Ch").innerHTML = `<span class="${pct>=0?"up":"dn"}">${pct>=0?"+":""}${nf(q.change, d)} · ${pct>=0?"+":""}${nf(pct,2)} %</span>`;
+  const sg = v => (v>=0?"+":"−") + nf(Math.abs(v), v===pct?2:d);
+  $(k+"Ch").innerHTML = `<span class="${pct>=0?"up":"dn"}">${sg(q.change)}&ensp;${sg(pct)}&thinsp;%</span>`;
   $(k+"State").textContent = o.demo ? "Vorschau-Daten" : (o.note||"") + (usOpen() ? "Börse offen" : "Schlusskurs");
   const lo = q.dayLow, hi = q.dayHigh;
   if(lo && hi && hi>lo){
@@ -591,7 +593,7 @@ function renderTick(k, q, o){
 function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "9";
+const VERSION = "10";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
