@@ -95,6 +95,7 @@
     border-radius:8px;padding:5px 0;
   }
   .line.tram,.line.bus{border-radius:20px}
+  .line.sev{border-radius:20px;border:2px solid var(--u3);color:var(--text);padding:3px 0}
   .dest{font-size:23px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .dest small{display:block;font-size:14px;color:var(--warn);margin-top:2px}
   .min{font-family:"Fraunces",Georgia,serif;font-size:34px;font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
@@ -184,9 +185,9 @@
    ========================================================= */
 const CONFIG = {
   lat: 48.1185, lon: 11.5420,               // Sendling (Wetter)
-  stops: [                                   // Namen wie in der MVV-Suche
-    { name: "Implerstraße",     walk: 7 },   // walk = Gehminuten bis zur Haltestelle
-    { name: "Brudermühlstraße", walk: 9 }
+  stops: [                                   // id = MVG globalId
+    { name: "Implerstraße",     id: "de:09162:1140", walk: 7 },   // walk = Gehminuten
+    { name: "Brudermühlstraße", id: "de:09162:1430", walk: 9 }
   ],
   perStop: 3,                                // Abfahrten pro Haltestelle
   nightFrom: 22, nightTo: 6,                 // Display abdunkeln
@@ -288,19 +289,15 @@ async function loadWeather(){
   }
 }
 
-/* ---------- Abfahrten (db.transport.rest, enthält MVG) ---------- */
-const stopIds = {};
-async function resolveStop(name){
-  if(stopIds[name]) return stopIds[name];
-  const r = await getJSON(`https://v6.db.transport.rest/locations?query=${encodeURIComponent(name+" München")}&results=1&addresses=false&poi=false`);
-  stopIds[name] = r[0].id; return r[0].id;
-}
-function lineClass(name, product){
-  const n = (name||"").replace(/\s/g,"");
-  if(/^U\d/.test(n)) return {cls:"", color:`var(--${n.toLowerCase()})`, label:n};
-  if(/^S\d/.test(n)) return {cls:"", color:"var(--sbahn)", label:n};
-  if(product==="tram" || /^(Tram|STR)/i.test(name)) return {cls:"tram", color:"var(--tram)", label:n.replace(/^(Tram|STR)/i,"")};
-  return {cls:"bus", color:"var(--bus)", label:n.replace(/^Bus/i,"")};
+/* ---------- Abfahrten (MVG-Schnittstelle, Echtzeit) ---------- */
+const MVG = "https://www.mvg.de/api/bgw-pt/v3";
+function lineClass(label, type, sev){
+  const n = (label||"").replace(/\s/g,"");
+  if(sev || (type==="BUS" && /^U\d/.test(n))) return {cls:"sev", color:"transparent", label:n};
+  if(type==="UBAHN") return {cls:"", color:`var(--${n.toLowerCase()}, var(--u3))`, label:n};
+  if(type==="SBAHN") return {cls:"", color:"var(--sbahn)", label:n};
+  if(type==="TRAM") return {cls:"tram", color:"var(--tram)", label:n};
+  return {cls:"bus", color:"var(--bus)", label:n};
 }
 function renderDeps(groups, demo){
   const now = Date.now();
@@ -309,10 +306,10 @@ function renderDeps(groups, demo){
       const m = Math.round((x.when - now)/60000);
       const tight = m < g.walk;               // schafft man nicht mehr zu Fuß
       const go = m >= g.walk && m <= g.walk+2; // jetzt los
-      const lc = lineClass(x.line, x.product);
+      const lc = lineClass(x.line, x.type, x.sev);
       return `<div class="dep">
         <div class="line ${lc.cls}" style="background:${lc.color}">${lc.label}</div>
-        <div class="dest">${x.dir}${x.delay>=2?`<small>+${x.delay} Min. Verspätung</small>`:""}${x.cancelled?`<small>fällt aus</small>`:""}</div>
+        <div class="dest">${x.dir}${lc.cls==="sev"?`<small>Ersatzverkehr (Bus)</small>`:""}${x.delay>=2?`<small>+${x.delay} Min. Verspätung</small>`:""}${x.cancelled?`<small>fällt aus</small>`:""}</div>
         <div class="min ${tight?"gone":go?"go":""}">${m<=0?"jetzt":m}<span>${m<=0?"":"Min"}</span></div>
       </div>`;
     }).join("") : `<div class="empty">Keine Abfahrten gefunden</div>`;
@@ -323,15 +320,13 @@ function renderDeps(groups, demo){
 async function loadDeps(){
   try{
     const groups = [];
-    for(const s of CONFIG.stops){
-      const id = await resolveStop(s.name);
-      const r = await getJSON(`https://v6.db.transport.rest/stops/${id}/departures?duration=40&results=${CONFIG.perStop*3}&remarks=false`);
-      const list = (r.departures||r).filter(d=>d.when || d.plannedWhen)
-        .map(d=>({line:d.line?.name, product:d.line?.product, dir:(d.direction||"").replace(/^München,?\s*/,""),
-                  when:new Date(d.when||d.plannedWhen).getTime(), delay:Math.round((d.delay||0)/60), cancelled:!!d.cancelled}))
+    for(const st of CONFIG.stops){
+      const r = await getJSON(`${MVG}/departures?globalId=${st.id}&limit=${CONFIG.perStop*3}`);
+      const list = r.map(d=>({line:d.label, type:d.transportType, sev:!!d.sev, dir:d.destination,
+                  when:d.realtimeDepartureTime||d.plannedDepartureTime, delay:d.delayInMinutes||0, cancelled:!!d.cancelled}))
         .filter(d=>d.when - Date.now() > -60000)
-        .sort((a,b)=>a.when-b.when).slice(0, CONFIG.perStop);
-      groups.push({name:s.name, walk:s.walk, items:list});
+        .sort((x,y)=>x.when-y.when).slice(0, CONFIG.perStop);
+      groups.push({name:st.name, walk:st.walk, items:list});
     }
     renderDeps(groups, false);
     setStatus(true);
@@ -340,11 +335,11 @@ async function loadDeps(){
     const t = Date.now(), m = x => t + x*60000;
     renderDeps([
       {name:"Implerstraße", walk:7, items:[
-        {line:"U3", dir:"Moosach", when:m(5)}, {line:"U6", dir:"Garching-Forschungszentrum", when:m(8)},
-        {line:"U3", dir:"Fürstenried West", when:m(11), delay:2}, ]},
+        {line:"U3", type:"UBAHN", dir:"Moosach", when:m(5)}, {line:"U6", type:"UBAHN", dir:"Garching-Forschungszentrum", when:m(8)},
+        {line:"U3", type:"UBAHN", dir:"Fürstenried West", when:m(11), delay:2}, ]},
       {name:"Brudermühlstraße", walk:9, items:[
-        {line:"U3", dir:"Moosach", when:m(10)}, {line:"Bus 54", product:"bus", dir:"Lorettoplatz", when:m(13)},
-        {line:"U3", dir:"Fürstenried West", when:m(16)}]}
+        {line:"U3", type:"BUS", sev:true, dir:"Goetheplatz", when:m(10)}, {line:"54", type:"BUS", dir:"Lorettoplatz", when:m(13)},
+        {line:"U3", type:"UBAHN", dir:"Fürstenried West", when:m(16)}]}
     ], true);
     setStatus(false);
   }
