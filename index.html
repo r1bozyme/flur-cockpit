@@ -39,7 +39,7 @@
     max-width:900px;margin:0 auto;
     padding:44px 40px 28px;
     display:grid;
-    grid-template-rows:auto auto 1fr auto auto;
+    grid-template-rows:auto auto auto 1fr auto auto;
     gap:22px;
   }
 
@@ -118,6 +118,18 @@
   .btn.main{background:var(--text);color:var(--bg);border:none}
   .btn svg{width:24px;height:24px}
 
+  /* ---------- Markt ---------- */
+  .mkt{display:grid;grid-template-columns:auto auto 1fr;gap:22px;align-items:center;padding:16px 26px}
+  .mkt .nm{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .mkt .nm small{display:block;letter-spacing:.02em;text-transform:none;font-weight:500;font-size:13px;margin-top:3px}
+  .mkt .px{font-family:"Fraunces",Georgia,serif;font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+  .mkt .ch{font-size:18px;margin-top:4px;font-variant-numeric:tabular-nums}
+  .up{color:var(--ok)} .dn{color:var(--warn)}
+  .rng{position:relative;height:6px;border-radius:3px;background:var(--line)}
+  .rng i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--text);transform:translateX(-2px)}
+  .rng b{position:absolute;top:0;width:2px;height:6px;background:var(--faint)}
+  .rngl{display:flex;justify-content:space-between;font-size:13px;color:var(--faint);margin-top:8px;font-variant-numeric:tabular-nums}
+
   /* ---------- Einkauf ---------- */
   .shop{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
   .shop .it{display:flex;gap:10px;align-items:baseline;font-size:20px;padding:6px 0;border-bottom:1px solid var(--line)}
@@ -148,6 +160,7 @@
   @media (orientation:landscape){
     .wrap{max-width:none;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto auto;column-gap:26px}
     .head{grid-column:1/-1}
+    .mkt-card{grid-column:1/-1}
     .weather-card{grid-column:1}
     .deps-card{grid-column:2;grid-row:2/4}
     .shop-card{grid-column:1}
@@ -163,6 +176,12 @@
     <div class="clock" id="clock">--<span class="sep">:</span>--</div>
     <div class="date"><div class="dow" id="dow">–</div><div class="dm" id="dm">–</div></div>
   </header>
+
+  <section class="card mkt mkt-card" id="mkt">
+    <div class="nm">S&amp;P 500<small id="mktState">–</small></div>
+    <div><div class="px" id="mktPx">–</div><div class="ch" id="mktCh"></div></div>
+    <div><div class="rng" id="mktRng"></div><div class="rngl"><span id="mktLo"></span><span>Tagesspanne</span><span id="mktHi"></span></div></div>
+  </section>
 
   <section class="card weather-card">
     <div class="label">Wetter · Sendling <span class="hint" id="wxSrc"></span></div>
@@ -186,9 +205,11 @@
 </div>
 <div class="night"></div>
 <div class="setup" id="setup"><div class="box">
-  <h2>Einkaufsliste verbinden</h2>
+  <h2>Dienste verbinden</h2>
   <p>Fine-grained Token mit Zugriff nur auf <b>training-log-data</b>, Berechtigung <b>Contents: Read-only</b>. Er wird nur auf diesem Gerät gespeichert.</p>
   <input id="tokIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
+  <p style="margin:18px 0 8px">Kurs-Key von <b>financialmodelingprep.com</b> (Gratis-Plan) für die S&amp;P-500-Kachel:</p>
+  <input id="fmpIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="FMP API-Key">
   <div id="setupMsg"></div>
   <div class="row"><button id="tokDel">Entfernen</button><button id="tokNo">Abbrechen</button><button class="prim" id="tokOk">Speichern</button></div>
 </div></div>
@@ -416,12 +437,16 @@ async function loadShop(){
 // Einrichten: 3× schnell auf „Flur-Cockpit“ tippen
 let taps = 0, tapT = 0;
 $("brand").addEventListener("click", ()=>{ const n=Date.now(); taps = n-tapT<700 ? taps+1 : 1; tapT=n; if(taps>=3){ taps=0; openSetup(); } });
-function openSetup(){ $("tokIn").value=""; $("setupMsg").textContent = tok() ? "Ein Token ist gespeichert." : "Noch kein Token gespeichert."; $("setup").classList.add("on"); }
+function openSetup(){ $("tokIn").value=""; $("fmpIn").value="";
+  $("setupMsg").textContent = "GitHub-Token: " + (tok() ? "gespeichert" : "fehlt") + " · Kurs-Key: " + (fmpKey() ? "gespeichert" : "fehlt") + ". Leere Felder bleiben unverändert.";
+  $("setup").classList.add("on"); }
 function closeSetup(){ $("setup").classList.remove("on"); }
 $("tokNo").onclick = closeSetup;
-$("tokDel").onclick = ()=>{ try{ localStorage.removeItem(TOK_KEY); }catch(e){} closeSetup(); loadShop(); };
+$("tokDel").onclick = ()=>{ try{ localStorage.removeItem(TOK_KEY); localStorage.removeItem(FMP_KEY); }catch(e){} closeSetup(); loadShop(); loadMkt(); };
 $("tokOk").onclick = async ()=>{
-  const v = $("tokIn").value.trim(); if(!v) return;
+  const v = $("tokIn").value.trim(), f = $("fmpIn").value.trim();
+  if(f){ try{ localStorage.setItem(FMP_KEY, f); }catch(e){} loadMkt(); }
+  if(!v){ closeSetup(); return; }
   $("setupMsg").textContent = "Prüfe …";
   const D = CONFIG.data;
   try{
@@ -434,8 +459,51 @@ $("tokOk").onclick = async ()=>{
   }catch(e){ $("setupMsg").textContent = "Keine Verbindung zu GitHub."; }
 };
 
+/* ---------- S&P 500 (Financial Modeling Prep) ---------- */
+const FMP_KEY = "fc-fmp";
+function fmpKey(){ try{ return localStorage.getItem(FMP_KEY) || ""; }catch(e){ return ""; } }
+const nf = (x,d=1) => x.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
+let spyMode = false;
+function usOpen(){
+  // NYSE regulär 9:30–16:00 New York, Mo–Fr (Feiertage nicht berücksichtigt)
+  const ny = new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
+  const m = ny.getHours()*60+ny.getMinutes(), d = ny.getDay();
+  return d>=1 && d<=5 && m>=570 && m<960;
+}
+async function fmpQuote(sym){
+  const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(fmpKey())}`, {cache:"no-store"});
+  if(r.status===401) throw new Error("Key ungültig");
+  const j = await r.json().catch(()=>null);
+  if(!r.ok || !Array.isArray(j) || !j.length) { const e = new Error("nicht im Plan"); e.plan = true; throw e; }
+  return j[0];
+}
+async function loadMkt(){
+  if(PREVIEW){ renderMkt({price:6812.4, change:28.6, changePercentage:0.42, dayLow:6771.2, dayHigh:6830.9, previousClose:6783.8}, false, true); return; }
+  if(!fmpKey()){ $("mktState").textContent = "Key fehlt – 3× auf „Flur-Cockpit“"; return; }
+  try{
+    let q;
+    if(!spyMode){ try{ q = await fmpQuote("^GSPC"); }catch(e){ if(e.plan) spyMode = true; else throw e; } }
+    if(spyMode) q = await fmpQuote("SPY");
+    renderMkt(q, spyMode, false);
+  }catch(e){ $("mktState").textContent = "Kurs nicht erreichbar: " + e.message; }
+}
+function renderMkt(q, spy, demo){
+  const pct = q.changePercentage ?? q.changesPercentage ?? 0;
+  $("mktPx").textContent = nf(q.price, spy?2:1);
+  $("mktCh").innerHTML = `<span class="${pct>=0?"up":"dn"}">${pct>=0?"+":""}${nf(q.change, spy?2:1)} · ${pct>=0?"+":""}${nf(pct,2)} %</span>`;
+  $("mktState").textContent = demo ? "Vorschau-Daten" : (spy ? "über SPY-ETF · " : "") + (usOpen() ? "Börse offen" : "Schlusskurs");
+  const lo = q.dayLow, hi = q.dayHigh;
+  if(lo && hi && hi>lo){
+    const pos = v => Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100));
+    $("mktRng").innerHTML = (q.previousClose ? `<b style="left:${pos(q.previousClose)}%" title="Vortag"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
+    $("mktLo").textContent = nf(lo, spy?2:0); $("mktHi").textContent = nf(hi, spy?2:0);
+  }
+}
+// Abruf alle 5 Min. während der US-Börsenzeit, sonst stündlich (Gratis-Plan: 250/Tag)
+function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?5:60)*60*1000); }
+
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "4";
+const VERSION = "5";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
@@ -447,6 +515,7 @@ tick(); setInterval(tick, 1000);
 loadWeather(); setInterval(loadWeather, CONFIG.refreshWx*1000);
 loadDeps(); setInterval(loadDeps, CONFIG.refreshDeps*1000);
 loadShop(); setInterval(loadShop, CONFIG.refreshShop*1000);
+mktLoop();
 // Seite einmal pro Nacht neu laden (gegen Speicherlecks im Dauerbetrieb)
 setTimeout(()=>location.reload(), (()=>{const n=new Date(),r=new Date(n);r.setHours(4,0,0,0);if(r<=n)r.setDate(r.getDate()+1);return r-n;})());
 </script>
