@@ -161,13 +161,13 @@
 
   /* Querformat-Fallback */
   @media (orientation:landscape){
-    .wrap{max-width:none;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto auto;column-gap:26px}
-    .head{grid-column:1/-1}
-    .mkt-card{grid-column:1/-1}
-    .weather-card{grid-column:1}
-    .deps-card{grid-column:2;grid-row:2/4}
-    .shop-card{grid-column:1}
-    .foot{grid-column:1/-1}
+    .wrap{max-width:none;grid-template-columns:1fr 1fr;grid-template-rows:auto auto auto 1fr auto;column-gap:26px}
+    .head{grid-column:1/-1;grid-row:1}
+    .mkt-card{grid-column:1/-1;grid-row:2}
+    .weather-card{grid-column:1;grid-row:3}
+    .deps-card{grid-column:2;grid-row:3/5}
+    .shop-card{grid-column:1;grid-row:4;align-self:start}
+    .foot{grid-column:1/-1;grid-row:5}
     .clock{font-size:104px}
   }
 </style>
@@ -523,7 +523,7 @@ function renderTick(k, q, o){
 function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "6";
+const VERSION = "7";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
