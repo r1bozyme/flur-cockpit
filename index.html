@@ -136,8 +136,10 @@
   .up{color:var(--ok)} .dn{color:var(--warn)}
   .rng{position:relative;height:6px;border-radius:3px;background:var(--line)}
   .rng i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--text);transform:translateX(-2px)}
-  .rng b{position:absolute;top:-3px;width:2px;height:12px;background:var(--muted);transform:translateX(-1px)}
-  .rngl{display:flex;justify-content:space-between;font-size:13px;color:var(--faint);margin-top:8px;font-variant-numeric:tabular-nums}
+  .rng b{position:absolute;top:-4px;width:2px;height:14px;background:var(--muted);transform:translateX(-1px)}
+  .rngl{position:relative;height:18px;font-size:13px;color:var(--faint);margin-top:8px;font-variant-numeric:tabular-nums}
+  .rngl span{position:absolute;top:0;white-space:nowrap}
+  .rngl .pc{color:var(--muted)}
 
   /* ---------- Unten: Termine + Einkauf ---------- */
   .duo{display:grid;grid-template-columns:1fr 1fr;gap:22px;min-height:0}
@@ -201,13 +203,13 @@
     <div class="tick">
       <div class="nm">S&amp;P 500<small id="spxState">–</small></div>
       <div><div class="px" id="spxPx">–</div><div class="ch" id="spxCh"></div></div>
-      <div class="rwrap"><div class="rng" id="spxRng"></div><div class="rngl"><span id="spxLo"></span><span id="spxPc"></span><span id="spxHi"></span></div></div>
+      <div class="rwrap"><div class="rng" id="spxRng"></div><div class="rngl" id="spxLbl"></div></div>
     </div>
     <div class="sep"></div>
     <div class="tick">
       <div class="nm">NIO<small id="nioState">–</small></div>
       <div><div class="px" id="nioPx">–</div><div class="ch" id="nioCh"></div></div>
-      <div class="rwrap"><div class="rng" id="nioRng"></div><div class="rngl"><span id="nioLo"></span><span id="nioPc"></span><span id="nioHi"></span></div></div>
+      <div class="rwrap"><div class="rng" id="nioRng"></div><div class="rngl" id="nioLbl"></div></div>
     </div>
   </section>
 
@@ -622,7 +624,10 @@ async function loadMkt(){
   try{ renderTick("nio", await fmpQuote("NIO"), {d:2, usd:true}); }
   catch(e){ $("nioState").textContent = e.message; }
 }
+const lastTick = {};
+window.addEventListener("resize", ()=>Object.keys(lastTick).forEach(k=>renderTick(k, ...lastTick[k])));
 function renderTick(k, q, o){
+  lastTick[k] = [q, o];
   const pct = q.changePercentage ?? q.changesPercentage ?? 0, d = o.d, cur = o.usd ? " $" : "";
   $(k+"Px").textContent = nf(q.price, d) + cur;
   const sg = v => (v>=0?"+":"−") + nf(Math.abs(v), v===pct?2:d);
@@ -633,17 +638,36 @@ function renderTick(k, q, o){
     // Skala umfasst Tagesspanne UND Vortagesschluss, damit der Vortagesstrich nie am Rand klebt
     const a = Math.min(lo, pc||lo), z = Math.max(hi, pc||hi), w = (z-a) || 1;
     const pos = v => Math.min(100, Math.max(0, (v-a)/w*100));
-    $(k+"Rng").innerHTML = `<span style="position:absolute;top:0;height:6px;border-radius:3px;background:#4a4238;left:${pos(lo)}%;width:${Math.max(1,pos(hi)-pos(lo))}%"></span>`
-      + (pc ? `<b style="left:${pos(pc)}%"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
-    $(k+"Lo").textContent = "Tief " + nf(lo, dd); $(k+"Hi").textContent = "Hoch " + nf(hi, dd);
-    $(k+"Pc").textContent = pc ? "│ Vortag " + nf(pc, dd) : "";
+    const pLo = pos(lo), pHi = pos(hi), pPc = pc ? pos(pc) : null;
+    $(k+"Rng").innerHTML = `<span style="position:absolute;top:0;height:6px;border-radius:3px;background:#6b6152;left:${pLo}%;width:${Math.max(1,pHi-pLo)}%"></span>`
+      + (pc ? `<b style="left:${pPc}%"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
+    // Beschriftung genau unter die Stellen setzen; am Rand bündig statt zentriert
+    const lbl = $(k+"Lbl"); lbl.innerHTML = "";
+    const put = (p, txt, cls) => {
+      const el = document.createElement("span"); el.textContent = txt; if(cls) el.className = cls;
+      lbl.appendChild(el);
+      const W = lbl.clientWidth, ew = el.offsetWidth;
+      let x = p/100*W - ew/2; x = Math.max(0, Math.min(W-ew, x));
+      el.style.left = x + "px"; return [x, x+ew];
+    };
+    const rTxt = hi>lo ? `Tag ${nf(lo, dd)}–${nf(hi, dd)}` : `Tag ${nf(lo, dd)}`;
+    const r = put((pLo+pHi)/2, rTxt);
+    if(pc){
+      const el = put(pPc, `Vortag ${nf(pc, dd)}`, "pc");
+      // Überlappung: Vortag auf die freie Seite der Tagesspanne schieben
+      if(el[1] > r[0] && el[0] < r[1]){
+        const node = lbl.lastChild, W = lbl.clientWidth, ew = node.offsetWidth;
+        const x = pPc <= (pLo+pHi)/2 ? Math.max(0, r[0]-ew-12) : Math.min(W-ew, r[1]+12);
+        node.style.left = x + "px";
+      }
+    }
   }
 }
 // 2 Abrufe je Runde: alle 10 Min. während der US-Börsenzeit, sonst stündlich → ca. 110/Tag je Gerät (Gratis-Plan: 250/Tag)
 function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "11";
+const VERSION = "12";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
