@@ -121,6 +121,12 @@
   /* ---------- Markt ---------- */
   .mkt{display:grid;grid-template-columns:1fr 1px 1fr;gap:24px;align-items:center;padding:14px 24px}
   .mkt .sep{align-self:stretch;background:var(--line)}
+  .mkthead{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:-6px}
+  .mkthead .t{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-size:15px;font-weight:500;padding:4px 12px;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  .pill i{width:9px;height:9px;border-radius:50%;background:var(--faint)}
+  .pill.open{color:var(--ok);border-color:rgba(143,179,138,.45)} .pill.open i{background:var(--ok);box-shadow:0 0 0 3px rgba(143,179,138,.18)}
+  .pill.soon{color:var(--accent);border-color:rgba(217,166,90,.45)} .pill.soon i{background:var(--accent)}
   .tick{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:end}
   .tick .rwrap{grid-column:1/-1}
   .mkt .nm{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
@@ -130,7 +136,7 @@
   .up{color:var(--ok)} .dn{color:var(--warn)}
   .rng{position:relative;height:6px;border-radius:3px;background:var(--line)}
   .rng i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--text);transform:translateX(-2px)}
-  .rng b{position:absolute;top:0;width:2px;height:6px;background:var(--faint)}
+  .rng b{position:absolute;top:-3px;width:2px;height:12px;background:var(--muted);transform:translateX(-1px)}
   .rngl{display:flex;justify-content:space-between;font-size:13px;color:var(--faint);margin-top:8px;font-variant-numeric:tabular-nums}
 
   /* ---------- Unten: Termine + Einkauf ---------- */
@@ -191,16 +197,17 @@
   </header>
 
   <section class="card mkt mkt-card" id="mkt">
+    <div class="mkthead"><span class="t">US-Börse</span><span class="pill" id="mktPill"><i></i><span>–</span></span></div>
     <div class="tick">
       <div class="nm">S&amp;P 500<small id="spxState">–</small></div>
       <div><div class="px" id="spxPx">–</div><div class="ch" id="spxCh"></div></div>
-      <div class="rwrap"><div class="rng" id="spxRng"></div><div class="rngl"><span id="spxLo"></span><span>Tag</span><span id="spxHi"></span></div></div>
+      <div class="rwrap"><div class="rng" id="spxRng"></div><div class="rngl"><span id="spxLo"></span><span id="spxPc"></span><span id="spxHi"></span></div></div>
     </div>
     <div class="sep"></div>
     <div class="tick">
       <div class="nm">NIO<small id="nioState">–</small></div>
       <div><div class="px" id="nioPx">–</div><div class="ch" id="nioCh"></div></div>
-      <div class="rwrap"><div class="rng" id="nioRng"></div><div class="rngl"><span id="nioLo"></span><span>Tag</span><span id="nioHi"></span></div></div>
+      <div class="rwrap"><div class="rng" id="nioRng"></div><div class="rngl"><span id="nioLo"></span><span id="nioPc"></span><span id="nioHi"></span></div></div>
     </div>
   </section>
 
@@ -544,11 +551,49 @@ const FMP_KEY = "fc-fmp";
 function fmpKey(){ try{ return localStorage.getItem(FMP_KEY) || ""; }catch(e){ return ""; } }
 const nf = (x,d=1) => x.toLocaleString("de-DE",{minimumFractionDigits:d, maximumFractionDigits:d});
 let spyMode = false;
-function usOpen(){
-  // NYSE regulär 9:30–16:00 New York, Mo–Fr (Feiertage nicht berücksichtigt)
-  const ny = new Date(new Date().toLocaleString("en-US",{timeZone:"America/New_York"}));
-  const m = ny.getHours()*60+ny.getMinutes(), d = ny.getDay();
-  return d>=1 && d<=5 && m>=570 && m<960;
+/* NYSE-Kalender (Quelle: NYSE-Feiertagskalender 2026–2027). Bei Bedarf jährlich ergänzen. */
+const NYSE_CLOSED = {"2026-01-01":"Neujahr","2026-01-19":"MLK Day","2026-02-16":"Presidents Day","2026-04-03":"Karfreitag",
+  "2026-05-25":"Memorial Day","2026-06-19":"Juneteenth","2026-07-03":"Independence Day","2026-09-07":"Labor Day",
+  "2026-11-26":"Thanksgiving","2026-12-25":"Weihnachten","2027-01-01":"Neujahr","2027-01-18":"MLK Day","2027-02-15":"Presidents Day",
+  "2027-03-26":"Karfreitag","2027-05-31":"Memorial Day","2027-06-18":"Juneteenth","2027-07-05":"Independence Day",
+  "2027-09-06":"Labor Day","2027-11-25":"Thanksgiving","2027-12-24":"Weihnachten"};
+const NYSE_EARLY = {"2026-11-27":1, "2026-12-24":1, "2027-11-26":1};   // Schluss 13:00 New York
+function nyParts(d){
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23",weekday:"short"}).formatToParts(d).map(x=>[x.type,x.value]));
+  return {iso:`${p.year}-${p.month}-${p.day}`, h:+p.hour, m:+p.minute, wd:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].indexOf(p.weekday)};
+}
+function nyToDate(iso, h, m){   // Uhrzeit in New York → echtes Datum
+  const target = Date.parse(iso+"T"+pad(h)+":"+pad(m)+":00Z");
+  const wall = t => { const q = nyParts(new Date(t)); return Date.parse(q.iso+"T"+pad(q.h)+":"+pad(q.m)+":00Z"); };
+  let t = target;
+  for(let i=0;i<2;i++) t = target - (wall(t) - t);
+  return new Date(t);
+}
+function tradingDay(iso, wd){ return wd>=1 && wd<=5 && !NYSE_CLOSED[iso]; }
+function mktStatus(){
+  const now = new Date(), q = nyParts(now), mins = q.h*60+q.m;
+  const closeMin = NYSE_EARLY[q.iso] ? 780 : 960;
+  if(tradingDay(q.iso, q.wd) && mins>=570 && mins<closeMin){
+    const cl = nyToDate(q.iso, Math.floor(closeMin/60), closeMin%60);
+    return {open:true, txt:`Offen · bis ${pad(cl.getHours())}:${pad(cl.getMinutes())}` + (NYSE_EARLY[q.iso] ? " (verkürzt)" : "")};
+  }
+  // nächste Eröffnung suchen
+  for(let i=0;i<10;i++){
+    const day = new Date(now.getTime() + i*864e5), p = nyParts(day);
+    if(!tradingDay(p.iso, p.wd)) continue;
+    if(i===0 && q.h*60+q.m >= 570) continue;
+    const op = nyToDate(p.iso, 9, 30), hrs = (op - now)/36e5;
+    const when = hrs < 20 && op.getDate()===now.getDate() ? "heute" : hrs < 44 && new Date(now.getTime()+864e5).getDate()===op.getDate() ? "morgen" : WD[op.getDay()];
+    const why = NYSE_CLOSED[q.iso] ? `${NYSE_CLOSED[q.iso]} · ` : "";
+    return {open:false, soon: hrs <= 1, txt:`${why}Geschlossen · öffnet ${when} ${pad(op.getHours())}:${pad(op.getMinutes())}`};
+  }
+  return {open:false, txt:"Geschlossen"};
+}
+function usOpen(){ return mktStatus().open; }
+function renderPill(){
+  const st = mktStatus(), el = $("mktPill");
+  el.className = "pill" + (st.open ? " open" : st.soon ? " soon" : "");
+  el.querySelector("span").textContent = st.txt;
 }
 async function fmpQuote(sym){
   const r = await fetch(`https://financialmodelingprep.com/stable/quote?symbol=${encodeURIComponent(sym)}&apikey=${encodeURIComponent(fmpKey())}`, {cache:"no-store"});
@@ -559,6 +604,7 @@ async function fmpQuote(sym){
   return j[0];
 }
 async function loadMkt(){
+  renderPill();
   if(PREVIEW){
     renderTick("spx", {price:6812.4, change:28.6, changePercentage:0.42, dayLow:6771.2, dayHigh:6830.9, previousClose:6783.8}, {d:1, demo:true});
     renderTick("nio", {price:6.42, change:-0.18, changePercentage:-2.72, dayLow:6.31, dayHigh:6.66, previousClose:6.60}, {d:2, usd:true, demo:true});
@@ -581,19 +627,23 @@ function renderTick(k, q, o){
   $(k+"Px").textContent = nf(q.price, d) + cur;
   const sg = v => (v>=0?"+":"−") + nf(Math.abs(v), v===pct?2:d);
   $(k+"Ch").innerHTML = `<span class="${pct>=0?"up":"dn"}">${sg(q.change)}&ensp;${sg(pct)}&thinsp;%</span>`;
-  $(k+"State").textContent = o.demo ? "Vorschau-Daten" : (o.note||"") + (usOpen() ? "Börse offen" : "Schlusskurs");
-  const lo = q.dayLow, hi = q.dayHigh;
-  if(lo && hi && hi>lo){
-    const pos = v => Math.min(100, Math.max(0, (v-lo)/(hi-lo)*100));
-    $(k+"Rng").innerHTML = (q.previousClose ? `<b style="left:${pos(q.previousClose)}%"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
-    $(k+"Lo").textContent = nf(lo, d===1?0:2); $(k+"Hi").textContent = nf(hi, d===1?0:2);
+  $(k+"State").textContent = o.demo ? "Vorschau-Daten" : (o.note||"") + (usOpen() ? "" : "Schlusskurs");
+  const lo = q.dayLow, hi = q.dayHigh, pc = q.previousClose, dd = d===1?0:2;
+  if(lo && hi && hi>=lo){
+    // Skala umfasst Tagesspanne UND Vortagesschluss, damit der Vortagesstrich nie am Rand klebt
+    const a = Math.min(lo, pc||lo), z = Math.max(hi, pc||hi), w = (z-a) || 1;
+    const pos = v => Math.min(100, Math.max(0, (v-a)/w*100));
+    $(k+"Rng").innerHTML = `<span style="position:absolute;top:0;height:6px;border-radius:3px;background:#4a4238;left:${pos(lo)}%;width:${Math.max(1,pos(hi)-pos(lo))}%"></span>`
+      + (pc ? `<b style="left:${pos(pc)}%"></b>` : "") + `<i style="left:${pos(q.price)}%"></i>`;
+    $(k+"Lo").textContent = "Tief " + nf(lo, dd); $(k+"Hi").textContent = "Hoch " + nf(hi, dd);
+    $(k+"Pc").textContent = pc ? "│ Vortag " + nf(pc, dd) : "";
   }
 }
 // 2 Abrufe je Runde: alle 10 Min. während der US-Börsenzeit, sonst stündlich → ca. 110/Tag je Gerät (Gratis-Plan: 250/Tag)
 function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "10";
+const VERSION = "11";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
@@ -606,6 +656,7 @@ loadWeather(); setInterval(loadWeather, CONFIG.refreshWx*1000);
 loadDeps(); setInterval(loadDeps, CONFIG.refreshDeps*1000);
 loadShop(); setInterval(loadShop, CONFIG.refreshShop*1000);
 mktLoop();
+setInterval(renderPill, 30000);
 loadCal(); setInterval(loadCal, CONFIG.refreshCal*1000);
 
 // Seite einmal pro Nacht neu laden (gegen Speicherlecks im Dauerbetrieb)
