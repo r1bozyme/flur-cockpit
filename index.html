@@ -37,17 +37,17 @@
   .wrap{
     height:100vh;height:100dvh;
     max-width:900px;margin:0 auto;
-    padding:44px 40px 28px;
+    padding:30px 36px 22px;
     display:grid;
     grid-template-rows:auto auto auto 1fr auto auto;
-    gap:22px;
+    gap:16px;
   }
 
   /* ---------- Kopf: Uhr & Datum ---------- */
   .head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
   .clock{
     font-family:"Fraunces",Georgia,serif;font-weight:300;
-    font-size:132px;line-height:.86;letter-spacing:-4px;
+    font-size:104px;line-height:.86;letter-spacing:-3px;
     font-variant-numeric:tabular-nums;
   }
   .clock .sep{opacity:.55}
@@ -56,18 +56,18 @@
   .date .dm{font-size:22px;color:var(--muted);margin-top:4px}
 
   /* ---------- Karten ---------- */
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:24px 26px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 24px}
   .label{
     font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--faint);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center
+    color:var(--faint);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center
   }
-  .label .hint{letter-spacing:.04em;text-transform:none;font-weight:500}
+  .label .hint{letter-spacing:.02em;text-transform:none;font-weight:500;font-size:15px}
 
   /* ---------- Wetter ---------- */
   .weather{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:center}
   .now{display:flex;align-items:center;gap:16px}
-  .now svg{width:76px;height:76px}
-  .temp{font-family:"Fraunces",Georgia,serif;font-weight:300;font-size:78px;line-height:1;letter-spacing:-2px}
+  .now svg{width:60px;height:60px}
+  .temp{font-family:"Fraunces",Georgia,serif;font-weight:300;font-size:64px;line-height:1;letter-spacing:-2px}
   .nowtxt{font-size:19px;color:var(--muted);margin-top:4px}
   .hours{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;text-align:center}
   .hours div{font-size:16px;color:var(--muted)}
@@ -82,12 +82,12 @@
 
   /* ---------- Abfahrten ---------- */
   .deps{display:flex;flex-direction:column;min-height:0;overflow:hidden}
-  #deps{overflow:hidden}
+  #deps{overflow:hidden;flex:1;min-height:0}
   .stopname{font-size:17px;color:var(--muted);margin:14px 0 6px;font-weight:500}
   .stopname:first-of-type{margin-top:0}
   .dep{
     display:grid;grid-template-columns:62px 1fr auto;align-items:center;gap:16px;
-    padding:9px 0;border-bottom:1px solid var(--line)
+    padding:6px 0;border-bottom:1px solid var(--line)
   }
   .dep:last-child{border-bottom:none}
   .line{
@@ -96,9 +96,9 @@
   }
   .line.tram,.line.bus{border-radius:20px}
   .line.sev{border-radius:20px;border:2px solid var(--u3);color:var(--text);padding:3px 0}
-  .dest{font-size:23px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dest{font-size:21px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .dest small{display:block;font-size:14px;color:var(--warn);margin-top:2px}
-  .min{font-family:"Fraunces",Georgia,serif;font-size:34px;font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
+  .min{font-family:"Fraunces",Georgia,serif;font-size:30px;font-variant-numeric:tabular-nums;text-align:right;min-width:92px}
   .min span{font-family:"Instrument Sans",sans-serif;font-size:16px;color:var(--muted);margin-left:3px}
   .min.go{color:var(--accent)}
   .min.gone{color:var(--faint)}
@@ -119,19 +119,29 @@
   .btn svg{width:24px;height:24px}
 
   /* ---------- Markt ---------- */
-  .mkt{display:grid;grid-template-columns:1fr 1px 1fr;gap:24px;align-items:center;padding:16px 26px}
+  .mkt{display:grid;grid-template-columns:1fr 1px 1fr;gap:24px;align-items:center;padding:14px 24px}
   .mkt .sep{align-self:stretch;background:var(--line)}
   .tick{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:end}
   .tick .rwrap{grid-column:1/-1}
   .mkt .nm{font-size:14px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
   .mkt .nm small{display:block;letter-spacing:.02em;text-transform:none;font-weight:500;font-size:13px;margin-top:3px}
-  .mkt .px{font-family:"Fraunces",Georgia,serif;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+  .mkt .px{font-family:"Fraunces",Georgia,serif;font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
   .mkt .ch{font-size:16px;margin-top:4px;font-variant-numeric:tabular-nums}
   .up{color:var(--ok)} .dn{color:var(--warn)}
   .rng{position:relative;height:6px;border-radius:3px;background:var(--line)}
   .rng i{position:absolute;top:-5px;width:4px;height:16px;border-radius:2px;background:var(--text);transform:translateX(-2px)}
   .rng b{position:absolute;top:0;width:2px;height:6px;background:var(--faint)}
   .rngl{display:flex;justify-content:space-between;font-size:13px;color:var(--faint);margin-top:8px;font-variant-numeric:tabular-nums}
+
+  /* ---------- Unten: Termine + Einkauf ---------- */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:22px;min-height:0}
+  .duo .shop{grid-template-columns:1fr}
+  .cal .ev{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .cal .ev:last-child,.duo .shop .it:last-child{border-bottom:none}
+  .cal .when{font-size:15px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .cal .when b{display:block;color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase}
+  .cal .ttl{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cal .ev.now .ttl{color:var(--accent)}
 
   /* ---------- Einkauf ---------- */
   .shop{display:grid;grid-template-columns:1fr 1fr;gap:4px 24px}
@@ -166,7 +176,7 @@
     .mkt-card{grid-column:1/-1;grid-row:2}
     .weather-card{grid-column:1;grid-row:3}
     .deps-card{grid-column:2;grid-row:3/5}
-    .shop-card{grid-column:1;grid-row:4;align-self:start}
+    .duo{grid-column:1;grid-row:4;align-self:start}
     .foot{grid-column:1/-1;grid-row:5}
     .clock{font-size:104px}
   }
@@ -204,10 +214,16 @@
     <div id="deps"><div class="empty">Lade Abfahrten …</div></div>
   </section>
 
+  <div class="duo">
+  <section class="card cal-card cal">
+    <div class="label">Termine <span class="hint" id="calSrc"></span></div>
+    <div id="cal"><div class="empty">Lade Termine …</div></div>
+  </section>
   <section class="card shop-card">
     <div class="label"><span id="shopTitle">Einkauf</span> <span class="hint" id="shopSrc"></span></div>
     <div id="shop"><div class="empty">Lade Einkaufsliste …</div></div>
   </section>
+  </div>
 
   <footer class="foot">
     <span id="status">–</span>
@@ -221,6 +237,8 @@
   <input id="tokIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…">
   <p style="margin:18px 0 8px">Kurs-Key von <b>financialmodelingprep.com</b> (Gratis-Plan) für S&amp;P 500 und NIO:</p>
   <input id="fmpIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="FMP API-Key">
+  <p style="margin:18px 0 8px">Kalender-Link (Apps-Script-Web-App inkl. <b>?k=…</b>):</p>
+  <input id="calIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec?k=…">
   <div id="setupMsg"></div>
   <div class="row"><button id="tokDel">Entfernen</button><button id="tokNo">Abbrechen</button><button class="prim" id="tokOk">Speichern</button></div>
 </div></div>
@@ -241,6 +259,8 @@ const CONFIG = {
   refreshDeps: 60,                           // Sekunden
   refreshWx: 900,
   refreshShop: 600,
+  refreshCal: 300,
+  calItems: 3,
   data: { owner: "r1bozyme", repo: "training-log-data", file: "backup.json" }
 };
 // Kurznamen für die Wand (Rest: Name aus dem Datenbestand oder Produkt-ID)
@@ -317,8 +337,8 @@ function renderWeather(w, demo){
       <div class="nowtxt">${txt} · gefühlt ${Math.round(w.feel)}° · ${Math.round(w.min)}° / ${Math.round(w.max)}°</div>
     </div>
     <div class="hours">${hrs}</div>
-    <div class="advice"><span class="dot"></span>${adviceFor(w, w.hours)}</div>`;
-  $("wxSrc").innerHTML = demo ? '<span class="badge">Vorschau-Daten</span>' : "Open-Meteo";
+`;
+  $("wxSrc").innerHTML = (demo ? '<span class="badge">Vorschau · </span>' : "") + '<span style="color:var(--text)">' + adviceFor(w, w.hours) + '</span>';
 }
 
 async function loadWeather(){
@@ -368,8 +388,19 @@ function renderDeps(groups, demo){
     }).join("") : `<div class="empty">Keine Abfahrten gefunden</div>`;
     return `<div class="stopname">${g.name} · ${g.walk} Min. zu Fuß</div>${rows}`;
   }).join("");
+  fitDeps(); requestAnimationFrame(fitDeps);
   $("depSrc").innerHTML = demo ? '<span class="badge">Vorschau-Daten</span>' : "orange = jetzt los";
 }
+// Nur ganze Zeilen zeigen: was unten nicht mehr ganz reinpasst, wird ausgeblendet
+function fitDeps(){
+  const box = $("deps"), card = box.closest(".card"), lim = card.getBoundingClientRect().bottom - parseFloat(getComputedStyle(card).paddingBottom);
+  box.querySelectorAll(".dep,.stopname").forEach(el=>el.style.display="");
+  box.querySelectorAll(".dep").forEach(el=>{ if(el.getBoundingClientRect().bottom > lim + 1) el.style.display="none"; });
+  box.querySelectorAll(".stopname").forEach(el=>{ const n = el.nextElementSibling; if(!n || n.style.display==="none") el.style.display="none"; });
+}
+window.addEventListener("resize", fitDeps);
+if(document.fonts) document.fonts.ready.then(fitDeps);
+setInterval(fitDeps, 5000); // Nachbar-Kacheln ändern ihre Höhe beim Nachladen
 async function loadDeps(){
   try{
     const groups = [];
@@ -436,7 +467,7 @@ async function loadShop(){
     $("shopTitle").textContent = "Einkauf · " + (e.samstag===today ? "heute" : wdTxt(e.samstag));
     let h = "";
     if(!e.aldi.length) h += '<div class="empty">Nichts nötig – alles reicht bis zum Samstag danach.</div>';
-    else h += '<div class="shop">'+e.aldi.map(x=>`<div class="it"><span class="qty">${x.kaufen}</span><span>${nm(x)} <span class="u">${x.kaufen===1?x.lbl:(PL[x.lbl]||x.lbl)}</span></span></div>`).join("")+'</div>';
+    else h += '<div class="shop">'+e.aldi.slice(0,4).map(x=>`<div class="it"><span class="qty">${x.kaufen}</span><span>${nm(x)} <span class="u">${x.kaufen===1?x.lbl:(PL[x.lbl]||x.lbl)}</span></span></div>`).join("")+'</div>' + (e.aldi.length>4 ? `<div class="online" style="color:var(--muted)">+ ${e.aldi.length-4} weitere in der App</div>` : "");
     if(e.online.length) h += `<div class="online">Online bestellen: ${e.online.map(x=>nm(x)+" (leer ~"+wdTxt(x.leer)+")").join(" · ")}</div>`;
     box.innerHTML = h;
     const age = bk.ts ? new Date(bk.ts) : null;
@@ -449,14 +480,17 @@ async function loadShop(){
 let taps = 0, tapT = 0;
 $("brand").addEventListener("click", ()=>{ const n=Date.now(); taps = n-tapT<700 ? taps+1 : 1; tapT=n; if(taps>=3){ taps=0; openSetup(); } });
 function openSetup(){ $("tokIn").value=""; $("fmpIn").value="";
-  $("setupMsg").textContent = "GitHub-Token: " + (tok() ? "gespeichert" : "fehlt") + " · Kurs-Key: " + (fmpKey() ? "gespeichert" : "fehlt") + ". Leere Felder bleiben unverändert.";
+  $("calIn").value="";
+  $("setupMsg").textContent = "GitHub-Token: " + (tok() ? "gespeichert" : "fehlt") + " · Kurs-Key: " + (fmpKey() ? "gespeichert" : "fehlt") + " · Kalender: " + (calUrl() ? "gespeichert" : "fehlt") + ". Leere Felder bleiben unverändert.";
   $("setup").classList.add("on"); }
 function closeSetup(){ $("setup").classList.remove("on"); }
 $("tokNo").onclick = closeSetup;
-$("tokDel").onclick = ()=>{ try{ localStorage.removeItem(TOK_KEY); localStorage.removeItem(FMP_KEY); }catch(e){} closeSetup(); loadShop(); loadMkt(); };
+$("tokDel").onclick = ()=>{ try{ localStorage.removeItem(TOK_KEY); localStorage.removeItem(FMP_KEY); localStorage.removeItem(CAL_KEY); }catch(e){} closeSetup(); loadShop(); loadMkt(); loadCal(); };
 $("tokOk").onclick = async ()=>{
   const v = $("tokIn").value.trim(), f = $("fmpIn").value.trim();
   if(f){ try{ localStorage.setItem(FMP_KEY, f); }catch(e){} loadMkt(); }
+  const c = $("calIn").value.trim();
+  if(c){ try{ localStorage.setItem(CAL_KEY, c); }catch(e){} loadCal(); }
   if(!v){ closeSetup(); return; }
   $("setupMsg").textContent = "Prüfe …";
   const D = CONFIG.data;
@@ -469,6 +503,40 @@ $("tokOk").onclick = async ()=>{
     setTimeout(()=>{ closeSetup(); loadShop(); }, j.permissions && j.permissions.push ? 3500 : 300);
   }catch(e){ $("setupMsg").textContent = "Keine Verbindung zu GitHub."; }
 };
+
+/* ---------- Termine (gemeinsamer Google-Kalender über Apps Script) ---------- */
+const CAL_KEY = "fc-cal";
+function calUrl(){ try{ return localStorage.getItem(CAL_KEY) || ""; }catch(e){ return ""; } }
+function dayLbl(ms){
+  const d = new Date(ms), t = new Date(); t.setHours(0,0,0,0);
+  const diff = Math.round((new Date(d).setHours(0,0,0,0) - t)/864e5);
+  return diff<=0 ? "Heute" : diff===1 ? "Morgen" : WD[d.getDay()]+" "+d.getDate()+"."+(d.getMonth()+1)+".";
+}
+const esc = x => String(x==null?"":x).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function renderCal(list){
+  const now = Date.now();
+  const rows = list.filter(e=>e.e > now).slice(0, CONFIG.calItems);
+  if(!rows.length){ $("cal").innerHTML = '<div class="empty">Keine Termine in den nächsten 7 Tagen</div>'; return; }
+  $("cal").innerHTML = rows.map(e=>{
+    const st = new Date(e.s), running = e.s <= now;
+    const time = e.a ? "ganztägig" : running ? "läuft" : pad(st.getHours())+":"+pad(st.getMinutes());
+    return `<div class="ev${running?" now":""}"><div class="when"><b>${dayLbl(e.s)}</b>${time}</div><div class="ttl">${esc(e.t)}</div></div>`;
+  }).join("");
+}
+async function loadCal(){
+  if(PREVIEW){
+    const t = new Date(); t.setMinutes(0,0,0); const h = x => t.getTime()+x*3600e3;
+    renderCal([{t:"Abendessen mit Freunden", s:h(4), e:h(6)}, {t:"Besuch kommt an, Hbf", s:h(24), e:h(25)}, {t:"Geburtstagsfeier", s:h(52), e:h(56)}, {t:"Wochenmarkt", s:h(70), e:h(71)}]);
+    $("calSrc").innerHTML = '<span class="badge">Vorschau-Daten</span>'; return;
+  }
+  if(!calUrl()){ $("cal").innerHTML = '<div class="empty">Noch nicht verbunden – 3× auf „Flur-Cockpit“.</div>'; return; }
+  try{
+    const j = await getJSON(calUrl(), 15000);
+    if(j.error) throw new Error(j.error==="forbidden" ? "Schlüssel im Link falsch" : j.error);
+    renderCal(j.ev || []);
+    $("calSrc").textContent = "";
+  }catch(e){ $("cal").innerHTML = `<div class="empty">Termine nicht erreichbar: ${esc(e.message)}</div>`; }
+}
 
 /* ---------- S&P 500 (Financial Modeling Prep) ---------- */
 const FMP_KEY = "fc-fmp";
@@ -523,7 +591,7 @@ function renderTick(k, q, o){
 function mktLoop(){ loadMkt(); setTimeout(mktLoop, (usOpen()?10:60)*60*1000); }
 
 /* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
-const VERSION = "7";
+const VERSION = "9";
 async function checkUpdate(){
   if(PREVIEW) return;
   try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
@@ -536,6 +604,8 @@ loadWeather(); setInterval(loadWeather, CONFIG.refreshWx*1000);
 loadDeps(); setInterval(loadDeps, CONFIG.refreshDeps*1000);
 loadShop(); setInterval(loadShop, CONFIG.refreshShop*1000);
 mktLoop();
+loadCal(); setInterval(loadCal, CONFIG.refreshCal*1000);
+
 // Seite einmal pro Nacht neu laden (gegen Speicherlecks im Dauerbetrieb)
 setTimeout(()=>location.reload(), (()=>{const n=new Date(),r=new Date(n);r.setHours(4,0,0,0);if(r<=n)r.setDate(r.getDate()+1);return r-n;})());
 </script>
