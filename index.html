@@ -315,16 +315,16 @@ function renderDeps(groups, demo){
     }).join("") : `<div class="empty">Keine Abfahrten gefunden</div>`;
     return `<div class="stopname">${g.name} · ${g.walk} Min. zu Fuß</div>${rows}`;
   }).join("");
-  $("depSrc").innerHTML = demo ? '<span class="badge">Vorschau-Daten</span>' : "orange = jetzt los · grau = knapp";
+  $("depSrc").innerHTML = demo ? '<span class="badge">Vorschau-Daten</span>' : "orange = jetzt los";
 }
 async function loadDeps(){
   try{
     const groups = [];
     for(const st of CONFIG.stops){
-      const r = await getJSON(`${MVG}/departures?globalId=${st.id}&limit=${CONFIG.perStop*3}`);
+      const r = await getJSON(`${MVG}/departures?globalId=${st.id}&limit=${CONFIG.perStop*5}`);
       const list = r.map(d=>({line:d.label, type:d.transportType, sev:!!d.sev, dir:d.destination,
                   when:d.realtimeDepartureTime||d.plannedDepartureTime, delay:d.delayInMinutes||0, cancelled:!!d.cancelled}))
-        .filter(d=>d.when - Date.now() > -60000)
+        .filter(d=>d.when - Date.now() >= st.walk*60000)   // nur, was zu Fuß noch erreichbar ist
         .sort((x,y)=>x.when-y.when).slice(0, CONFIG.perStop);
       groups.push({name:st.name, walk:st.walk, items:list});
     }
@@ -348,6 +348,14 @@ function setStatus(live){
   const d = new Date();
   $("status").textContent = (live ? "Aktualisiert " : (PREVIEW ? "Offline-Vorschau · " : "Keine Verbindung · ")) + pad(d.getHours())+":"+pad(d.getMinutes());
 }
+
+/* ---------- Selbst-Update: lädt neu, sobald eine neue Fassung im Repo liegt ---------- */
+const VERSION = "3";
+async function checkUpdate(){
+  if(PREVIEW) return;
+  try{ const v = await getJSON("version.json?t="+Date.now()); if(v.v && v.v !== VERSION) location.reload(); }catch(e){}
+}
+setInterval(checkUpdate, 5*60*1000);
 
 /* ---------- Start ---------- */
 tick(); setInterval(tick, 1000);
